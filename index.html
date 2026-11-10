@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>터보 카트 그랑프리</title>
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #6ec3f5; font-family: -apple-system, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif; color: #fff; user-select: none; }
+  canvas#game { display: block; width: 100%; height: 100%; }
+  .hud { position: fixed; pointer-events: none; text-shadow: 0 2px 4px rgba(0,0,0,.6); font-weight: 800; }
+  #hud-top-left { top: 16px; left: 20px; font-size: 22px; line-height: 1.5; }
+  #rank { font-size: 64px; line-height: 1; font-style: italic; }
+  #rank small { font-size: 26px; }
+  #hud-top-right { top: 16px; right: 20px; }
+  #minimap { width: 190px; height: 190px; background: rgba(0,0,0,.35); border-radius: 14px; }
+  #hud-bottom-right { right: 24px; bottom: 20px; text-align: right; }
+  #speed { font-size: 60px; font-style: italic; line-height: 1; }
+  #speed small { font-size: 20px; }
+  #hud-bottom-left { left: 24px; bottom: 20px; }
+  #slots { display: flex; gap: 8px; margin-bottom: 10px; }
+  .slot { width: 62px; height: 62px; border-radius: 12px; background: rgba(0,0,0,.45); border: 3px solid rgba(255,255,255,.7); display: flex; align-items: center; justify-content: center; font-size: 34px; text-shadow: none; }
+  .slot:first-child { border-color: #ffd93b; }
+  #gauge-wrap { width: 260px; height: 18px; background: rgba(0,0,0,.45); border-radius: 9px; overflow: hidden; border: 2px solid rgba(255,255,255,.7); }
+  #gauge { height: 100%; width: 0%; background: linear-gradient(90deg, #36d1ff, #7cff6b, #ffe14a); }
+  #gauge-label { font-size: 13px; margin-top: 4px; opacity: .9; }
+  #center { top: 26%; left: 0; right: 0; text-align: center; font-size: 110px; font-style: italic; }
+  #notice { top: 14%; left: 0; right: 0; text-align: center; font-size: 30px; color: #ffe14a; }
+  .overlay { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(10,25,50,.6); }
+  .panel { background: rgba(15,30,60,.92); border: 3px solid #ffd93b; border-radius: 22px; padding: 30px 44px; text-align: center; max-width: 520px; }
+  .panel h1 { margin: 0 0 6px; font-size: 44px; font-style: italic; color: #ffd93b; }
+  .panel p { margin: 6px 0; font-size: 16px; font-weight: 500; line-height: 1.6; }
+  .keys { text-align: left; margin: 16px auto; font-size: 15px; font-weight: 500; line-height: 1.9; display: inline-block; }
+  kbd { background: #fff; color: #123; border-radius: 6px; padding: 2px 8px; font-weight: 800; font-family: inherit; }
+  button { margin-top: 14px; font-size: 24px; font-weight: 800; padding: 12px 44px; border-radius: 14px; border: none; background: #ffd93b; color: #1a2b4d; cursor: pointer; font-family: inherit; }
+  button:hover { background: #fff0a0; }
+  #results ol { text-align: left; font-size: 20px; line-height: 1.8; padding-left: 30px; margin: 10px 0; }
+  #results li.me { color: #ffd93b; }
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+<canvas id="game"></canvas>
+
+<div id="hud" class="hidden">
+  <div class="hud" id="hud-top-left">
+    <div id="rank">1<small>/6</small></div>
+    <div id="lap">LAP 1/3</div>
+    <div id="time">00:00.00</div>
+  </div>
+  <div class="hud" id="hud-top-right"><canvas id="minimap" width="190" height="190"></canvas></div>
+  <div class="hud" id="hud-bottom-left">
+    <div id="slots"><div class="slot" id="slot0"></div><div class="slot" id="slot1"></div></div>
+    <div id="gauge-wrap"><div id="gauge"></div></div>
+    <div id="gauge-label">드리프트 게이지</div>
+  </div>
+  <div class="hud" id="hud-bottom-right"><div id="speed">0<small> km/h</small></div></div>
+  <div class="hud" id="notice"></div>
+  <div class="hud" id="center"></div>
+</div>
+
+<div class="overlay" id="menu">
+  <div class="panel">
+    <h1>터보 카트 그랑프리</h1>
+    <p>AI 카트 5대와 겨루는 3바퀴 레이스!</p>
+    <div class="keys">
+      <div><kbd>↑</kbd><kbd>↓</kbd><kbd>←</kbd><kbd>→</kbd> 또는 <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> — 운전</div>
+      <div><kbd>Shift</kbd> — 드리프트 (게이지가 차면 부스터 획득)</div>
+      <div><kbd>Space</kbd> — 아이템 사용 &nbsp; <kbd>R</kbd> — 트랙 복귀</div>
+      <div><kbd>M</kbd> — 소리 켜기/끄기</div>
+    </div>
+    <p>⚡ 부스터 &nbsp; 🛢️ 오일 &nbsp; 🚀 로켓</p>
+    <button id="startBtn">출발!</button>
+  </div>
+</div>
+
+<div class="overlay hidden" id="results">
+  <div class="panel">
+    <h1 id="resultTitle">완주!</h1>
+    <ol id="resultList"></ol>
+    <button id="againBtn">다시 하기</button>
+  </div>
+</div>
+
+<script type="module" src="./game.js"></script>
+</body>
+</html>
